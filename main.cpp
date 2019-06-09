@@ -48,35 +48,29 @@ int main(void)
 //		namedWindow("Original Video", WINDOW_NORMAL);
 //		imshow("Original Video", frame1);
 
-		//	Frames, that
-		Mat frame1Copy = frame1.clone();
-		Mat	frame2Copy = frame2.clone();
-
-		Mat pyrFrameForProccess1;	//	First frame for processing
-		Mat pyrFrameForProccess2;	//	Second frame for processing
-
+		Mat processFrame1;	//	First frame for processing
+		Mat processFrame2;	//	Second frame for processing
 		Mat frameMarker = frame1.clone();	//	Frames for result video
-
 		Mat binaryCheck = frame1.clone();	//	Frames for check the presence of the blade
 
 		//	Down-scale and upscale the image to filter out the noise.
 		//	It also speeds up the processing
-		float resizeCoefficientX = frame1Copy.cols / 320;	//	Resize coefficient X
-		float resizeCoefficientY = frame1Copy.rows / 200;	//	Resize coefficient Y
-		resize(frame1Copy, pyrFrameForProccess1, Size(320, 200));
-		resize(frame2Copy, pyrFrameForProccess2, Size(320, 200));
+		float resizeCoefficientX = frame1.cols / 320;	//	Resize coefficient X
+		float resizeCoefficientY = frame1.rows / 200;	//	Resize coefficient Y
+		resize(frame1, processFrame1, Size(320, 200));
+		resize(frame2, processFrame2, Size(320, 200));
 
 		//	Blurring frames
-		GaussianBlur(pyrFrameForProccess1, pyrFrameForProccess1, Size(11, 11), 0);
-		GaussianBlur(pyrFrameForProccess2, pyrFrameForProccess2, Size(11, 11), 0);
+		GaussianBlur(processFrame1, processFrame1, Size(11, 11), 0);
+		GaussianBlur(processFrame2, processFrame2, Size(11, 11), 0);
 		GaussianBlur(binaryCheck, binaryCheck, Size(11, 11), 0);
 		//	Uncomment to see this step
 //		namedWindow("GaussianBlur", WINDOW_NORMAL);
 //		imshow("GaussianBlur", pyrFrameForProccess1);
 
 		//	Converting frames to grayscale
-		cvtColor(pyrFrameForProccess1, pyrFrameForProccess1, COLOR_BGR2GRAY);
-		cvtColor(pyrFrameForProccess2, pyrFrameForProccess2, COLOR_BGR2GRAY);
+		cvtColor(processFrame1, processFrame1, COLOR_BGR2GRAY);
+		cvtColor(processFrame2, processFrame2, COLOR_BGR2GRAY);
 		cvtColor(binaryCheck, binaryCheck, COLOR_BGR2GRAY);
 		//	Uncomment to see this step
 //		namedWindow("Gray", WINDOW_NORMAL);
@@ -88,16 +82,16 @@ int main(void)
 //		imshow("Binary Check", binaryCheck);
 
 		Mat frameDifferences;
-		//	Calculated absolute difference between two images
-		absdiff(pyrFrameForProccess1, pyrFrameForProccess2, frameDifferences);
+		absdiff(processFrame1, processFrame2, frameDifferences);	//	Calculate absolute difference between two images
 		//	Uncomment to see this step
 //		namedWindow("Differens between frames", WINDOW_NORMAL);
 //		imshow("Differens between frames", frameDifferences);
 
 		Mat frameBinary;
 		threshold(frameDifferences, frameBinary, 35, 255, THRESH_BINARY);
-		namedWindow("Binary", WINDOW_NORMAL);
-		imshow("Binary", frameBinary);
+		//	Uncomment to see this step
+//		namedWindow("Binary", WINDOW_NORMAL);
+//		imshow("Binary", frameBinary);
 
 		//Morphology operations
 		Mat structuringElement5x5 = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
