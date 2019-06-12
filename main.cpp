@@ -31,14 +31,20 @@ int main(void)
 	char checkEsc = 0;
 	bool firstFrame = true;
 	int frameCount = 2;
-
+	int primFrameCount = 30;
 	//	The original location of the center of the tracking ellipse.
 	//	Currently calculated manually.
-	int centerPreviousEllipseX = 875;
-	int centerPreviousEllipseY = 617;
 
 	origVideo.read(frame1);
 	origVideo.read(frame2);
+
+	Mat resultAdding;
+	Mat binaryMerged;
+	Mat structuringElement15x15 = getStructuringElement(MORPH_ELLIPSE, Size(15, 15));
+	Mat structuringElement27x27 = getStructuringElement(MORPH_ELLIPSE, Size(27, 27));
+
+	int centerPreviousEllipseX;
+	int centerPreviousEllipseY;
 
 	while (origVideo.isOpened() && checkEsc != 27)
 	{
@@ -59,6 +65,63 @@ int main(void)
 		float resizeCoefficientY = frame1.rows / 200;	//	Resize coefficient Y
 		resize(frame1, processFrame1, Size(320, 200));
 		resize(frame2, processFrame2, Size(320, 200));
+
+		//	Primary ellipse detection
+		while (frameCount < primFrameCount)
+		{
+			for (int j = 0; j <= primFrameCount; j++)
+			{
+				origVideo.read(frame1);
+				origVideo.read(frame2);
+				resize(frame1, frame1, Size(320, 200));
+				resize(frame2, frame2, Size(320, 200));
+				GaussianBlur(frame1, frame1, Size(11, 11), 0);
+				GaussianBlur(frame2, frame2, Size(11, 11), 0);
+				cvtColor(frame1, frame1, COLOR_BGR2GRAY);
+				cvtColor(frame2, frame2, COLOR_BGR2GRAY);
+				Mat primaryFrameDifferences;
+				absdiff(frame1, frame2, primaryFrameDifferences);
+				threshold(primaryFrameDifferences, primaryFrameDifferences, 35, 255, THRESH_BINARY);
+				if (frameCount < 3)
+				{
+					binaryMerged = primaryFrameDifferences.clone();
+				}
+				//morphologyEx(resultAdding, resultAdding, MORPH_CLOSE, structuringElement15x15);
+				//morphologyEx(resultAdding, resultAdding, MORPH_OPEN, structuringElement15x15);
+				dilate(primaryFrameDifferences, primaryFrameDifferences, structuringElement27x27);
+				add(binaryMerged, primaryFrameDifferences, resultAdding);
+				namedWindow("Primary Ellipse", WINDOW_NORMAL);
+				imshow("Primary Ellipse", resultAdding);
+				binaryMerged = resultAdding.clone();
+				frame1 = frame2.clone();
+				if ((origVideo.get(CAP_PROP_POS_FRAMES) + 1) < origVideo.get(CAP_PROP_FRAME_COUNT))
+				{
+					origVideo.read(frame2);
+				}
+				frameCount++;
+			}
+			vector<vector<Point>> primContours;
+			findContours(resultAdding, primContours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+			drawAndShowContours(resultAdding.size(), primContours, "Primary Contours");
+			vector<vector<Point>> primConvexHulls(primContours.size());
+			for (unsigned int i = 0; i < primContours.size(); i++) {
+				convexHull(primContours[i], primConvexHulls[i]);
+			}
+			vector<RotatedRect> minEllipse(primConvexHulls.size());
+			for (size_t i = 0; i < primConvexHulls.size(); i++)
+			{
+				if (primConvexHulls[i].size() > 5)
+				{
+					minEllipse[i] = fitEllipse(primConvexHulls[i]);
+				}
+			}
+			minEllipse[0].center.x = minEllipse[0].center.x * resizeCoefficientX;
+			minEllipse[0].center.y = minEllipse[0].center.y * resizeCoefficientX;
+			minEllipse[0].size.width = minEllipse[0].size.width * (resizeCoefficientX - 1);
+			minEllipse[0].size.height = minEllipse[0].size.height * (resizeCoefficientX - 1);
+			centerPreviousEllipseX = minEllipse[0].center.x;
+			centerPreviousEllipseY = minEllipse[0].center.y;
+		}
 
 		//	Blurring frames
 		GaussianBlur(processFrame1, processFrame1, Size(11, 11), 0);
